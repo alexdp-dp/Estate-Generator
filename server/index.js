@@ -13,8 +13,10 @@ app.use(express.json({limit:'20mb'}));
 app.use(cookieParser());
 
 const SUPABASE_URL=process.env.SUPABASE_URL;
-const KEY=process.env.SUPABASE_SERVICE_ROLE_KEY;
+const KEY=process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
 const JWT_SECRET=process.env.JWT_SECRET||'CHANGE_THIS_IN_RENDER';
+if(!SUPABASE_URL) console.error('[CONFIG] SUPABASE_URL lipsește.');
+if(!KEY) console.error('[CONFIG] SUPABASE_SERVICE_ROLE_KEY / SUPABASE_SECRET_KEY lipsește.');
 const sb=createClient(SUPABASE_URL||'http://localhost',KEY||'missing',{auth:{persistSession:false,autoRefreshToken:false}});
 const ADMIN_USER='alexdarie';
 const ADMIN_HASH='pbkdf2_sha256$210000$lM6qBN+L6b1Vqcj0u9nnOQ==$BU5Pfss01ik6AKY7wxWg9MTlN1NTqZfVkejYPpBDMVY=';
@@ -34,8 +36,21 @@ function send(res,data,error,status=500){
 }
 function clean(o,allowed){return Object.fromEntries(Object.entries(o||{}).filter(([k])=>allowed.includes(k)))}
 
-app.get('/api/version',(req,res)=>res.json({app:'estate-studio-model-generator',build:'1.0.0'}));
-app.get('/api/health',async(req,res)=>{const {error}=await sb.from('generator_projects').select('id',{head:true,count:'exact'});res.status(error?500:200).json({ok:!error,error:error?.message||null})});
+app.get('/api/version',(req,res)=>res.json({app:'estate-studio-model-generator',build:'1.1-create-fix'}));
+app.get('/api/health',async(req,res)=>{
+  if(!SUPABASE_URL || !KEY){
+    return res.status(500).json({
+      ok:false,
+      error:!SUPABASE_URL?'SUPABASE_URL lipsește în Render Environment':'SUPABASE_SERVICE_ROLE_KEY lipsește în Render Environment'
+    });
+  }
+  try{
+    const {error}=await sb.from('generator_projects').select('id',{head:true,count:'exact'});
+    res.status(error?500:200).json({ok:!error,error:error?.message||null});
+  }catch(e){
+    res.status(500).json({ok:false,error:e.message});
+  }
+});
 
 app.post('/api/auth/login',(req,res)=>{
   if(req.body?.username===ADMIN_USER&&verifyPassword(String(req.body?.password||''),ADMIN_HASH)){
@@ -80,13 +95,53 @@ app.get('/api/generator/projects',auth,async(req,res)=>{
   res.json(out);
 });
 app.post('/api/generator/projects',auth,async(req,res)=>{
+  let createdProjectId=null;
   try{
+    if(!SUPABASE_URL || !KEY){
+      throw new Error('Supabase nu este configurat în Render Environment.');
+    }
+
+    const name=String(req.body?.name||'').trim();
+    if(!name) return res.status(400).json({error:'Numele proiectului este obligatoriu.'});
+
     const count=Math.max(1,Math.min(50,Number(req.body.building_count)||1));
-    const {data:p,error}=await sb.from('generator_projects').insert({name:req.body.name,slug:req.body.slug||`generator-${Date.now()}`}).select().single();if(error)throw error;
-    const rows=Array.from({length:count},(_,i)=>({generator_project_id:p.id,name:`Bloc ${i+1}`,sort_order:i,levels_count:6,default_floor_height_m:3,position_x:i*22}));
-    const {error:be}=await sb.from('generator_buildings').insert(rows);if(be)throw be;
-    res.json(p);
-  }catch(e){send(res,null,e)}
+    const baseSlug=String(req.body?.slug||'').trim() || `generator-${Date.now()}`;
+
+    // Evită eroarea de slug duplicat dacă utilizatorul recreează un proiect cu același nume.
+    let slug=baseSlug;
+    const {data:existing,error:existingError}=await sb.from('generator_projects').select('id').eq('slug',slug).maybeSingle();
+    if(existingError) throw existingError;
+    if(existing) slug=`${baseSlug}-${Date.now().toString().slice(-6)}`;
+
+    const {data:p,error}=await sb
+      .from('generator_projects')
+      .insert({name,slug})
+      .select()
+      .single();
+    if(error) throw error;
+    createdProjectId=p.id;
+
+    const rows=Array.from({length:count},(_,i)=>({
+      generator_project_id:p.id,
+      name:`Bloc ${i+1}`,
+      sort_order:i,
+      levels_count:6,
+      default_floor_height_m:3,
+      position_x:i*22
+    }));
+
+    const {error:be}=await sb.from('generator_buildings').insert(rows);
+    if(be) throw be;
+
+    res.status(201).json(p);
+  }catch(e){
+    console.error('[CREATE GENERATOR PROJECT]',e);
+    // Nu lăsăm proiecte incomplete dacă inserarea clădirilor eșuează.
+    if(createdProjectId){
+      try{await sb.from('generator_projects').delete().eq('id',createdProjectId)}catch{}
+    }
+    res.status(500).json({error:e?.message||String(e)});
+  }
 });
 app.get('/api/generator/projects/:id',auth,async(req,res)=>{try{res.json(await projectTree(req.params.id))}catch(e){send(res,null,e,404)}});
 app.patch('/api/generator/projects/:id',auth,async(req,res)=>{const {data,error}=await sb.from('generator_projects').update(clean(req.body,['name','slug','description','status','settings'])).eq('id',req.params.id).select().single();send(res,data,error)});

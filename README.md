@@ -1,3 +1,14 @@
+# Estate Studio Model Generator — V1.1 Create Fix
+
+Fix pentru proiect nou:
+- erorile de creare sunt afișate în UI, nu mai pare că butonul nu face nimic;
+- banner live `Supabase conectat / indisponibil`;
+- `/api/health` spune explicit dacă lipsește o variabilă Render;
+- acceptă `SUPABASE_SERVICE_ROLE_KEY` sau `SUPABASE_SECRET_KEY`;
+- slug duplicat este rezolvat automat;
+- proiectul incomplet este șters automat dacă inserarea blocurilor eșuează;
+- `/api/version` => `1.1-create-fix`.
+
 # Estate Studio Model Generator — V1
 
 Repository recomandat: `estate-studio-model-generator`

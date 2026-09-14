@@ -27,18 +27,55 @@ function Shell({children,title,subtitle,back}){
 
 function Projects(){
   const [items,setItems]=useState([]),[open,setOpen]=useState(false),[name,setName]=useState(''),[count,setCount]=useState(2),[busy,setBusy]=useState(false);
+  const [error,setError]=useState(''),[dbStatus,setDbStatus]=useState(null);
   const nav=useNavigate();
-  async function load(){setItems(await api('/generator/projects'))}
-  useEffect(()=>{load()},[]);
-  async function create(e){
-    e.preventDefault();setBusy(true);
+
+  async function load(){
     try{
-      const p=await api('/generator/projects',{method:'POST',body:{name,slug:slugify(name),building_count:Number(count)||1}});
-      nav(`/projects/${p.id}/general`);
-    }finally{setBusy(false)}
+      setError('');
+      const rows=await api('/generator/projects');
+      setItems(rows);
+    }catch(e){
+      setError(`Nu pot încărca proiectele: ${e.message}`);
+    }
   }
+
+  useEffect(()=>{
+    load();
+    fetch('/api/health')
+      .then(r=>r.json().then(d=>({ok:r.ok,data:d})))
+      .then(({ok,data})=>setDbStatus({ok,message:data.error||null}))
+      .catch(e=>setDbStatus({ok:false,message:e.message}));
+  },[]);
+
+  async function create(e){
+    e.preventDefault();
+    if(!name.trim()) return setError('Introdu un nume pentru proiect.');
+    setBusy(true);
+    setError('');
+    try{
+      const payload={
+        name:name.trim(),
+        slug:slugify(name.trim()) || `model-${Date.now()}`,
+        building_count:Math.max(1,Number(count)||1)
+      };
+      const p=await api('/generator/projects',{method:'POST',body:payload});
+      if(!p?.id) throw new Error('Serverul nu a întors ID-ul proiectului creat.');
+      nav(`/projects/${p.id}/general`);
+    }catch(err){
+      setError(`Nu am putut crea proiectul: ${err.message}`);
+    }finally{
+      setBusy(false);
+    }
+  }
+
   return <Shell title="Model Generator" subtitle="Proiecte separate pentru reconstrucția 3D din planuri și randări.">
-    <div className="top-actions"><button className="primary" onClick={()=>setOpen(true)}>＋ Proiect nou</button></div>
+    {dbStatus&&<div className={'db-banner '+(dbStatus.ok?'ok':'bad')}>
+      <b>{dbStatus.ok?'● Supabase conectat':'● Supabase indisponibil'}</b>
+      {!dbStatus.ok&&<span>{dbStatus.message||'Verifică variabilele Environment din Render.'}</span>}
+    </div>}
+    {error&&<div className="error project-error">{error}</div>}
+    <div className="top-actions"><button className="primary" onClick={()=>{setError('');setOpen(true)}}>＋ Proiect nou</button></div>
     <div className="cards">
       {items.map(p=><article className="project-card" key={p.id}><div className="pill">{p.building_count} clădiri</div><h3>{p.name}</h3><p>{p.asset_count} fișiere · {p.geometry_count} geometrii</p><button className="primary" onClick={()=>nav(`/projects/${p.id}/general`)}>Deschide</button></article>)}
       {!items.length&&<div className="empty">Nu există proiecte în Model Generator.</div>}
