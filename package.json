@@ -1,5 +1,5 @@
 {
-  "name": "estate-studio-model-generator",
+  "name": "estate-studio",
   "private": true,
   "scripts": {
     "install:all": "npm --prefix client install --include=dev && npm --prefix server install",
