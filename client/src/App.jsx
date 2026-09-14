@@ -123,8 +123,6 @@ function ProjectEditor(){
   const floorType=building?.floor_types?.find(f=>f.id===selFloorType)||building?.floor_types?.[0];
   useEffect(()=>{if(building&&!selFloorType&&building.floor_types?.[0])setSelFloorType(building.floor_types[0].id)},[building?.id,project]);
 
-  if(!project)return <Shell title="Model Generator" back={()=>nav('/projects')}><div className="loading">{error||'Se încarcă…'}</div></Shell>;
-
   const tabs=[['general','1. Proiect'],['documents','2. Documentație'],['structure','3. Structură'],['geometry','4. Geometrie'],['preview','5. Preview & GLB']];
 
   async function patchBuilding(bid,patch){await api(`/generator/buildings/${bid}`,{method:'PATCH',body:patch});await load()}
@@ -156,7 +154,7 @@ function ProjectEditor(){
 
   async function saveFloorType(ft,patch){await api(`/generator/floor-types/${ft.id}`,{method:'PATCH',body:patch});await api(`/generator/buildings/${building.id}/generate-levels`,{method:'POST',body:{}});await load()}
 
-  const planAssets=(project.assets||[]).filter(a=>a.asset_kind==='floor_plan'&&(!building||a.building_id===building.id));
+  const planAssets=(project?.assets||[]).filter(a=>a.asset_kind==='floor_plan'&&(!building||a.building_id===building.id));
 
   async function assignPlan(assetId){
     if(!floorType)return;
@@ -164,10 +162,18 @@ function ProjectEditor(){
     await load();
   }
 
-  const assignedPlan=(project.assets||[]).find(a=>a.floor_type_id===floorType?.id&&a.asset_kind==='floor_plan');
+  const assignedPlan=(project?.assets||[]).find(a=>a.floor_type_id===floorType?.id&&a.asset_kind==='floor_plan');
   const existingGeom=building?.geometry?.find(g=>g.floor_type_id===floorType?.id&&g.geometry_kind==='footprint');
 
   useEffect(()=>{setGeomDraft(existingGeom?.geometry||null)},[existingGeom?.id,floorType?.id]);
+
+  // IMPORTANT: toate hook-urile din ProjectEditor sunt executate înainte de orice return condițional.
+  // Altfel React production aruncă invariant #310 după încărcarea proiectului.
+  if(!project){
+    return <Shell title="Model Generator" back={()=>nav('/projects')}>
+      <div className="loading">{error||'Se încarcă…'}</div>
+    </Shell>;
+  }
 
   async function saveGeometry(g){
     if(!floorType)return;

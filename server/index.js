@@ -36,7 +36,7 @@ function send(res,data,error,status=500){
 }
 function clean(o,allowed){return Object.fromEntries(Object.entries(o||{}).filter(([k])=>allowed.includes(k)))}
 
-app.get('/api/version',(req,res)=>res.json({app:'estate-studio-model-generator',build:'1.1-create-fix'}));
+app.get('/api/version',(req,res)=>res.json({app:'estate-studio-model-generator',build:'1.2-hooks-fix'}));
 app.get('/api/health',async(req,res)=>{
   if(!SUPABASE_URL || !KEY){
     return res.status(500).json({

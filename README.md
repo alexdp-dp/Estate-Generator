@@ -1,3 +1,12 @@
+# Estate Studio Model Generator — V1.2 Hooks Fix
+
+Fix pentru eroarea React production `#310`:
+- `ProjectEditor` avea un `return` condițional înaintea unui `useEffect`;
+- primul render (project=null) executa mai puține hook-uri decât renderul următor;
+- toate hook-urile sunt acum executate în aceeași ordine la fiecare render;
+- accesul la `project.assets` este null-safe;
+- `/api/version` => `1.2-hooks-fix`.
+
 # Estate Studio Model Generator — V1.1 Create Fix
 
 Fix pentru proiect nou:
