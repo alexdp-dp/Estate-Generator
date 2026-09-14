@@ -1,0 +1,14 @@
+{
+  "name": "estate-studio-model-generator-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {"start":"node index.js"},
+  "dependencies": {
+    "@supabase/supabase-js": "^2.57.4",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}

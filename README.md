@@ -1,0 +1,36 @@
+# Estate Studio Model Generator — V1
+
+Repository recomandat: `estate-studio-model-generator`
+
+## Render
+Un singur **Web Service / Node.js**.
+
+Build Command:
+`npm install && npm run install:all && npm run build`
+
+Start Command:
+`npm start`
+
+Environment:
+- `SUPABASE_URL=https://tdcrjumaidgsdnohusmk.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY=...`
+- `JWT_SECRET=...`
+- `NODE_ENV=production`
+
+## Ce face V1
+- proiecte de generator separate de Estate Studio;
+- alegi numărul de clădiri;
+- redenumești și poziționezi clădirile;
+- upload planuri, fațade, secțiuni, randări, imagini aeriene, plan amplasament;
+- optimizare imagini în browser (max. 4096px, WebP) înainte de upload;
+- clasificare documente pe proiect / clădire;
+- tipuri de etaj: parter, etaj tip, retras, penthouse etc.;
+- aplicare tip de plan la niveluri multiple;
+- calibrare scară pe 2 puncte;
+- trasare contur exterior cu snap 0/90 și 45;
+- preview 3D procedural;
+- export GLB per clădire sau pentru tot ansamblul;
+- salvarea exporturilor în Supabase Storage.
+
+## Limitarea intenționată a V1
+V1 generează **volumetria 3D exterioră din contururile etajelor**. Nu încearcă încă să deducă automat ferestrele, balcoanele și materialele din randări. Acestea sunt următorul strat al generatorului.
